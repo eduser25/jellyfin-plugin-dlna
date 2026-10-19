@@ -1,0 +1,30 @@
+name: 'Test build'
+
+on:
+  push:
+    branches:
+      - playto-stopped-resume
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish
+        run: dotnet publish src/Jellyfin.Plugin.Dlna/Jellyfin.Plugin.Dlna.csproj -c Release -o out
+
+      - name: Collect plugin artifacts
+        run: |
+          mkdir -p plugin
+          cp out/Jellyfin.Plugin.Dlna.dll out/Jellyfin.Plugin.Dlna.Model.dll out/Jellyfin.Plugin.Dlna.Playback.dll out/Rssdp.dll plugin/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dlna-plugin
+          path: plugin/
