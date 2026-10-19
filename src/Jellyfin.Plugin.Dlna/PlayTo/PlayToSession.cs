@@ -256,6 +256,13 @@ public class PlayToSession : ISessionController, IDisposable
             streamInfo = StreamParams.ParseFromUrl(e.NewMediaInfo.Url, _libraryManager, _mediaSourceManager);
             if (streamInfo.Item is null)
             {
+                // Another control point (AirPlay, the vendor app, ...) took over the renderer. The playlist is
+                // kept so a later play command can hand the current item back to the device.
+                _logger.LogInformation(
+                    "{DeviceName} - Renderer switched to media not served by this session: {Url}",
+                    _session.DeviceName,
+                    e.NewMediaInfo.Url);
+
                 return;
             }
 
@@ -570,9 +577,14 @@ public class PlayToSession : ISessionController, IDisposable
                 return _device.SetPause(CancellationToken.None);
 
             case PlaystateCommand.Unpause:
-                return _device.SetPlay(CancellationToken.None);
+                return CanResumeFromStopped() ? ResumeFromStopped(cancellationToken) : _device.SetPlay(CancellationToken.None);
 
             case PlaystateCommand.PlayPause:
+                if (CanResumeFromStopped())
+                {
+                    return ResumeFromStopped(cancellationToken);
+                }
+
                 return _device.IsPaused ? _device.SetPlay(CancellationToken.None) : _device.SetPause(CancellationToken.None);
 
             case PlaystateCommand.Seek:
@@ -586,6 +598,22 @@ public class PlayToSession : ISessionController, IDisposable
         }
 
         return Task.CompletedTask;
+    }
+
+    // A stopped renderer cannot be paused (UPnP 701), and a plain Play resumes whatever it holds now, which
+    // after another control point took over is that one's media, not this session's. Handing the current
+    // playlist item back is the only way play does what the client asked for.
+    private bool CanResumeFromStopped()
+        => _device.IsStopped && _currentPlaylistIndex >= 0 && _currentPlaylistIndex < _playlist.Count;
+
+    private Task ResumeFromStopped(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "{DeviceName} - Renderer is stopped, handing it playlist item {Index} again",
+            _session.DeviceName,
+            _currentPlaylistIndex);
+
+        return SetPlaylistIndex(_currentPlaylistIndex, cancellationToken);
     }
 
     private async Task Seek(long newPosition)

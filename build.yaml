@@ -1,7 +1,7 @@
 name: "DLNA"
 guid: "33EBA9CD-7DA1-4720-967F-DD7DAE7B74A1"
 imageUrl: "https://repo.jellyfin.org/releases/plugin/images/jellyfin-plugin-dlna.png"
-version: 14
+version: "14.0.0.1"
 targetAbi: "12.1.0.0"
 framework: "net10.0"
 owner: "jellyfin"
@@ -16,4 +16,4 @@ artifacts:
   - "Jellyfin.Plugin.Dlna.Playback.dll"
   - "Rssdp.dll"
 changelog: |-
-  - Fix track changes that renderers ignore or overrun (#245) @Shadowghost, @crobibero
+  - Local test build: resume the playlist when play is sent to a stopped renderer
